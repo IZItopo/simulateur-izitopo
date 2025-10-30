@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur IZItopo App + GPS RTK</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- PARTIE GAUCHE : Simulateur GPS RTK -->
+        <div class="gps-simulator">
+            <h2>Simulateur GPS RTK</h2>
+            
+            <!-- Cible interactive avec barre Z -->
+            <div class="target-container">
+                <canvas id="targetCanvas" width="350" height="350"></canvas>
+                <div class="z-slider-container">
+                    <div class="z-labels">
+                        <span class="z-label-top">+1.0m</span>
+                        <span class="z-label-center">0.0m</span>
+                        <span class="z-label-bottom">-1.0m</span>
+                    </div>
+                    <input type="range" id="zSlider" class="z-slider" min="-1" max="1" step="0.01" value="0" orient="vertical">
+                    <div class="z-value">Z: <span id="zSliderValue">0.00</span>m</div>
+                </div>
+            </div>
+            
+            <!-- Panneau de contrôle -->
+            <div class="gps-controls">
+                <!-- Coordonnées centre -->
+                <div class="control-section">
+                    <h3>Coordonnées Centre</h3>
+                    <div class="input-group">
+                        <label>X (m):</label>
+                        <input type="number" id="centerX" value="547892.000" step="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label>Y (m):</label>
+                        <input type="number" id="centerY" value="6458123.000" step="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label>Z (m):</label>
+                        <input type="number" id="centerZ" value="145.000" step="0.001">
+                    </div>
+                    <button id="setCenterBtn" class="btn-primary">Définir comme centre</button>
+                </div>
+                
+                <!-- Position actuelle -->
+                <div class="control-section">
+                    <h3>Position Actuelle</h3>
+                    <div class="coords-display">
+                        <div>X: <span id="currentX">547892.000</span> m</div>
+                        <div>Y: <span id="currentY">6458123.000</span> m</div>
+                        <div>Z: <span id="currentZ">145.000</span> m</div>
+                        <hr>
+                        <div class="delta">ΔX: <span id="deltaX">+0.000</span> m</div>
+                        <div class="delta">ΔY: <span id="deltaY">+0.000</span> m</div>
+                        <div class="delta">ΔZ: <span id="deltaZ">+0.000</span> m</div>
+                    </div>
+                </div>
+                
+                <!-- Statut RTK -->
+                <div class="control-section">
+                    <h3>Statut RTK</h3>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="status" value="Fixe" checked>
+                            <span class="status-dot status-fixe"></span> Fixe
+                        </label>
+                        <label>
+                            <input type="radio" name="status" value="Flottant">
+                            <span class="status-dot status-flottant"></span> Flottant
+                        </label>
+                        <label>
+                            <input type="radio" name="status" value="Autonome">
+                            <span class="status-dot status-autonome"></span> Autonome
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Précisions -->
+                <div class="control-section">
+                    <h3>Précisions (variations aléatoires)</h3>
+                    <div class="input-group">
+                        <label>Hrms max (m):</label>
+                        <input type="number" id="hrmsMax" value="0.030" step="0.001" min="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label>Vrrms max (m):</label>
+                        <input type="number" id="vrrmsMax" value="0.050" step="0.001" min="0.001">
+                    </div>
+                    <div class="precision-display">
+                        <div>Hrms actuel: <span id="currentHrms">0.009</span> m</div>
+                        <div>Vrrms actuel: <span id="currentVrrms">0.015</span> m</div>
+                        <div>Satellites: <span id="currentSats">29</span></div>
+                    </div>
+                </div>
+                
+                <!-- Reset -->
+                <button id="resetBtn" class="btn-secondary">🔄 Réinitialiser position</button>
+            </div>
+        </div>
+        
+        <!-- PARTIE DROITE : Simulateur IZItopo App + Liste des points -->
+        <div class="right-column">
+            <div class="app-simulator">
+            <!-- Écran d'accueil -->
+            <div id="welcomeScreen" class="phone-frame">
+                <div class="phone-content welcome">
+                    <div class="welcome-content">
+                        <h1>Simulateur<br>IZItopo</h1>
+                        <div class="app-icon">📱</div>
+                        <p class="welcome-subtitle">Démonstration interactive</p>
+                        <button id="startBtn" class="btn-start">Démarrer</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Splash Screen -->
+            <div id="splashScreen" class="phone-frame" style="display:none;">
+                <div class="phone-content splash">
+                    <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="TCract Logo" class="logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                    <div class="logo-text" style="display:none;">
+                        <h1>TC<span style="color:#4caf50">ract</span></h1>
+                    </div>
+                    <div class="version">25.09</div>
+                </div>
+            </div>
+            
+            <!-- Menu Principal -->
+            <div id="menuScreen" class="phone-frame" style="display:none;">
+                <div class="phone-content menu-main">
+                    <!-- Header avec données RTK -->
+                    <div class="menu-header">
+                        <div class="menu-rtk-card">
+                            <div class="menu-rtk-header">
+                                <span class="menu-rtk-header-left">simulateur</span>
+                                <span class="menu-rtk-header-right">^</span>
+                            </div>
+                            <div class="menu-rtk-data">
+                                <div class="menu-rtk-col">
+                                    <div class="menu-rtk-label">
+                                        <span class="menu-rtk-icon">🟢</span> Hrms
+                                    </div>
+                                    <div class="menu-rtk-value" id="menuHrms">0,009 m</div>
+                                </div>
+                                <div class="menu-rtk-col">
+                                    <div class="menu-rtk-label">
+                                        <span class="menu-rtk-icon">🟢</span> Vrrms
+                                    </div>
+                                    <div class="menu-rtk-value" id="menuVrrms">0,015 m</div>
+                                </div>
+                                <div class="menu-rtk-col">
+                                    <div class="menu-rtk-label">
+                                        <span class="menu-rtk-icon">📡</span> Satellites
+                                    </div>
+                                    <div class="menu-rtk-value menu-satellites-value" id="menuSats">27</div>
+                                </div>
+                            </div>
+                            <div class="menu-status-badge">
+                                <span class="status-icon">📍</span>
+                                <span class="menu-status-label">Status</span>
+                                <span class="menu-status-value" id="menuStatus">Fixe</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Logo TCract -->
+                        <div class="menu-logo">
+                            <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="TCract" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                            <div class="menu-logo-text" style="display:none;">
+                                <span style="color:#1a4d3f;font-weight:bold;font-size:32px;">TC</span><span style="color:#4caf50;font-weight:bold;font-size:32px;">ract</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Boutons de menu -->
+                    <div class="menu-buttons">
+                        <button class="menu-btn" id="prisePhotoBtn">
+                            <div class="menu-btn-icon">📱</div>
+                            <div class="menu-btn-text">Prise Photo</div>
+                        </button>
+                        
+                        <button class="menu-btn" id="modeCanneBtn">
+                            <div class="menu-btn-icon">📍</div>
+                            <div class="menu-btn-text">Mode Canne</div>
+                        </button>
+                        
+                        <button class="menu-btn" id="implantationBtn">
+                            <div class="menu-btn-icon">🎯</div>
+                            <div class="menu-btn-text">Implantation</div>
+                        </button>
+                    </div>
+                    
+                    <!-- Bouton paramètres -->
+                    <button class="settings-fab">⚙️</button>
+                </div>
+            </div>
+            
+            <!-- Mode Canne -->
+            <div id="modeCanne" class="phone-frame" style="display:none;">
+                <div class="phone-content">
+                    <!-- Header -->
+                    <div class="header">
+                        <div class="header-title">Mode canne</div>
+                        <div class="header-info">
+                            <span>Nombre de points : <span id="pointCount">0</span></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Carte vidéo (zone RTK) -->
+                    <div class="video-card">
+                        <div class="video-header">
+                            <span>simulateur</span>
+                            <span class="video-toggle">^</span>
+                        </div>
+                        <div class="rtk-data">
+                            <div class="rtk-col">
+                                <div class="rtk-label">🟢 Hrms</div>
+                                <div class="rtk-value" id="appHrms">0,009 m</div>
+                            </div>
+                            <div class="rtk-col">
+                                <div class="rtk-label">🟢 Vrrms</div>
+                                <div class="rtk-value" id="appVrrms">0,015 m</div>
+                            </div>
+                        </div>
+                        <div class="rtk-row">
+                            <div class="satellites">
+                                📡 Satellites <span id="appSats">27</span>
+                            </div>
+                            <div class="status-badge">
+                                <span class="status-icon">📍</span>
+                                Status <span id="appStatus">Fixe</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulaire -->
+                    <div class="form-section">
+                        <div class="form-row">
+                            <label>HAUTEUR CANNE</label>
+                            <input type="text" id="hauteurInput" placeholder="Hauteur Canne">
+                            <span class="unit">m</span>
+                        </div>
+                        
+                        <div class="form-row">
+                            <label>MATRICULE DU POINT</label>
+                            <input type="text" id="matriculeInput" placeholder="Matricule du point">
+                        </div>
+                        
+                        <div class="form-row checkbox-row">
+                            <input type="checkbox" id="controleCheck">
+                            <label for="controleCheck">POINTS DE CONTÔLE</label>
+                        </div>
+                        
+                        <div class="form-row">
+                            <label>CODE</label>
+                            <div class="code-input-container">
+                                <input type="text" id="codeInput" placeholder="Saisir ou choisir...">
+                                <button id="openCodeBtn" class="btn-code-dots">...</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Message de confirmation -->
+                    <div id="confirmMsg" class="confirm-message" style="display:none;">
+                        ✅ Position enregistrée
+                    </div>
+                    
+                    <!-- Bouton enregistrer -->
+                    <button id="savePointBtn" class="btn-save">
+                        📍 Enregistrer un point
+                    </button>
+                    
+                    <!-- Bouton retour en bas à gauche -->
+                    <button id="backToMenuBtn" class="back-fab">◀</button>
+                </div>
+            </div>
+            
+            <!-- Pop-up codes -->
+            <div id="codePopup" class="code-popup" style="display:none;">
+                <div class="popup-header">
+                    <span>Titre de section 1</span>
+                    <span>1 / 2</span>
+                    <button id="closePopupBtn" class="btn-validate">✓</button>
+                </div>
+                <div class="popup-content">
+                    <div class="code-grid">
+                        <button class="code-btn">102</button>
+                        <button class="code-btn">105</button>
+                        <button class="code-btn">120</button>
+                        <button class="code-btn">150</button>
+                        <button class="code-btn code-del">Del</button>
+                    </div>
+                    <div class="code-grid">
+                        <button class="code-btn">204 20</button>
+                        <button class="code-btn">via</button>
+                        <button class="code-btn">arb</button>
+                        <button class="code-btn">cro</button>
+                        <button class="code-btn code-libre">Libre</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Liste des points enregistrés (sous le téléphone) -->
+        <div class="points-list-external">
+            <div class="points-list-header">
+                <h3>Points enregistrés (<span id="pointsListCount">0</span>)</h3>
+            </div>
+            <div id="pointsList" class="points-list-table">
+                <div class="csv-header">
+                    <span>Matricule</span>
+                    <span>X</span>
+                    <span>Y</span>
+                    <span>Z</span>
+                    <span>Code</span>
+                    <span>Hrms</span>
+                    <span>Vrms</span>
+                    <span>Satellites</span>
+                    <span>Diffstatus</span>
+                    <span>Horodatage</span>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/gps.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sync.js') }}"></script>
+</body>
+</html>
